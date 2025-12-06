@@ -1,0 +1,131 @@
+first try to understand the project thorougly by looking at architecture
+
+Project demo link: https://youtu.be/QzmDvhwFLt8?si=luUsnHDIwq5XYdG3
+
+refer to imgae.png in repository files
+
+
+
+Techologies/Tools used:
+Java, maven, Git, tomcat, mysql, memcache, rabbitmq
+
+
+
+now lets go to AWS to create infra
+
+1. Security Groups:
+
+start with security groups
+ ALB SG - inbound rule allow all traffic from ipv4 and ipv6
+ tomcat SG - inbound rule allow all traffic from the ALB SG
+ backend SG - inbound rule allow all traffic from the tomcat SG
+
+please check my word doc screenshots for better reference 
+
+2. Key Pair:
+
+create one key pair and that can be attached to all instances
+
+3. EC2 Instances
+we have to launch 4 ec2 servers
+for 3 servers we use amazon 2023 image 
+while launhcing we have to insert user data which is available in main repo userdatafolder
+mysql.sh for database server/instance
+rabbitmq.sh for rabbitmq server/instance
+memcache.sh for memcache server/instance
+
+for these 3 server select security group backend SG
+
+for 1 server we use ubuntu 24.04 image will be enough
+while launhcing we have to insert user data which is available in main repo userdatafolder
+tomcat_ubuntu.sh for tomcat server/instance
+for this server select security group tomcat SG
+
+all instance select only free tiers more than enough
+
+4. Load Balancer
+
+create a target group of type instance select tomcat instance give port 8080 because tomcat server runs on port 8080
+create a load blancer which will listen on default port 80 and select the target group as we created just above
+
+5. Route 53
+
+create a private hosted zone give domain as you wish in my case i have give basha.in
+now add records of type A which means name to ip mapping
+for 3 backend servers 3 records you have to add
+let's say
+db01   --> add private ip of db server
+mc01   --> add private ip of memcache server
+rmq01  --> add private ip of rabbitmq server 
+save them 
+
+6. DNS routing for main public domain i use godaddy
+if you use AWS for that also same
+
+we have to take DNS of ALB here record type is CNAME name to name mapping
+save
+
+
+
+things to do in your local machine
+clone the repo using this link https://github.com/MBashaa/basha-project1.git
+
+in your local machine you need to have already installed java17jdk, git and maven
+
+check them if all fine  
+
+open terminal/gitbash go to folder basha-project1
+
+if you given customized names in route 53 records
+edit a file called application.properties which is available in folder src/main/resources 
+refer to doc and the image under application properties file highlighted area in yellow color need to be replaced as you created records in route53
+otherwise you can follow from below step
+
+run the maven command
+-->mvn install
+
+in the same folder a new folder called target got created in this directory we have our war file which is used by tomcat.
+it will take sometime please wait until build got finished
+
+now we have to copy this war file to our tomcat server
+
+run a command 
+-->  scp -i pathtopemfile pathtowarfile ubuntu@serveraddress:/home/ubuntu
+
+ex:  scp -i prod.pem bash-project1/target/vprofile-v2.war ubuntu@serveraddress:/home/ubuntu
+
+log into tomcat server to place this in tomcat webapps folder 
+to login to tomcat server make sure port 22 is allowed from your ip in SG of tomcat
+
+--> ssh -i prod.pem ubuntu@serveraddress
+
+first delete ROOT file in server
+
+--> rm -rf /var/lib/tomcat/webapps/ROOT
+
+stop tomcat server 
+--> sudo systemctl stop tomcat10
+reload daemon
+--> sudo systemctl daemon-reload
+
+copy war file to there
+--> sudo cp vprofile-v2.war /var/lib/tomcat/webapps/ROOT.war
+
+restart tomcat server 
+--> sudo systemctl start tomcat10
+
+now check ROOT file that is extracted from war file
+
+--> ls /var/lib/tomcat/webapp/
+to files will list  ROOT & ROOT.war
+
+now just hit the URL you created in godaddy or route53
+in my case
+
+vpro.bashabhai.xyz
+
+you can check screenshot in doc.
+
+Thank you for reading till the end if you want watch demo click on below link.
+https://youtu.be/QzmDvhwFLt8?si=luUsnHDIwq5XYdG3
+
